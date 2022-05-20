@@ -7,11 +7,14 @@ import {interpolate} from "@pulumi/pulumi";
 const tokenLambdaAuthorizer = awsx.apigateway.getTokenLambdaAuthorizer({
     authorizerResultTtlInSeconds: 0,
     handler: async (event: awsx.apigateway.AuthorizerEvent) => {
+        console.log('Auth lambda event:', event);
         let result: Effect = 'Deny'
         if (event.authorizationToken === 'token-allow') {
             result = 'Allow';
         }
-        return awsx.apigateway.authorizerResponse("user", result, event.methodArn);
+        const response = awsx.apigateway.authorizerResponse("user", result, event.methodArn, {testContextKey: 'test-context-value'});
+        console.log('Auth lambda response:', JSON.stringify(response));
+        return response;
     },
 });
 
@@ -20,7 +23,10 @@ export const api = new awsx.apigateway.API("myapi", {
             {
                 path: "/first",
                 method: "GET",
-                eventHandler: async () => {
+                eventHandler: async (event, context) => {
+                    console.log('First lambda event:', event);
+                    console.log('First lambda context:', context);
+                    console.log('First lambda event.requestContext.authorizer:', event['requestContext']['authorizer']);
                     return {
                         statusCode: 200,
                         body: "<h1>Hello from first</h1>",
@@ -31,7 +37,10 @@ export const api = new awsx.apigateway.API("myapi", {
             {
                 path: "/second",
                 method: "GET",
-                eventHandler: async () => {
+                eventHandler: async (event, context) => {
+                    console.log('Second lambda event:', event);
+                    console.log('Second lambda context:', context);
+                    console.log('First lambda event.requestContext.authorizer:', event['requestContext']['authorizer']);
                     return {
                         statusCode: 200,
                         body: "<h1>Hello from second</h1>",
