@@ -2,6 +2,8 @@ import * as awsx from "@pulumi/awsx";
 import {awsProvider, LOCALSTACK_ENDPOINT} from "./utils/provider";
 import {Effect} from "@pulumi/awsx/apigateway/lambdaAuthorizer";
 import {interpolate} from "@pulumi/pulumi";
+import gatewayResponses from "./responses";
+import corsRoute from "./cors";
 
 
 const tokenLambdaAuthorizer = awsx.apigateway.getTokenLambdaAuthorizer({
@@ -20,6 +22,20 @@ const tokenLambdaAuthorizer = awsx.apigateway.getTokenLambdaAuthorizer({
 
 export const api = new awsx.apigateway.API("myapi", {
         routes: [
+            ...corsRoute,
+            {
+                path: "/public",
+                method: "GET",
+                eventHandler: async (event, context) => {
+                    console.log('Second lambda event:', event);
+                    console.log('Second lambda context:', context);
+                    console.log('First lambda event.requestContext.authorizer:', event['requestContext']['authorizer']);
+                    return {
+                        statusCode: 200,
+                        body: "<h1>Hello from public</h1>",
+                    };
+                }
+            },
             {
                 path: "/first",
                 method: "GET",
@@ -48,6 +64,10 @@ export const api = new awsx.apigateway.API("myapi", {
                 },
                 authorizers: [tokenLambdaAuthorizer],
             }],
+        /*gatewayResponses: gatewayResponses,
+        restApiArgs: {
+            binaryMediaTypes: ['needs_this_so_pulumi_does_not_add/default_binary_media_type']
+        },*/
     },
     {provider: awsProvider});
 
